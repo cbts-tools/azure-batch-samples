@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Batch.Samples.Common
     using System.Linq;
     using System.Threading.Tasks;
     using Batch.Common;
-
+    using Azure.Batch;
     /// <summary>
     /// Static class containing a number of helper methods used by sample projects associated with Azure.com articles.
     /// </summary>
@@ -23,23 +23,52 @@ namespace Microsoft.Azure.Batch.Samples.Common
         /// <param name="nodeCount">The number of nodes to create within the pool.</param>
         /// <param name="taskSlotsPerNode">The number of task slots to run concurrent tasks on each node.</param>
         /// <returns>A bound <see cref="CloudPool"/> with the specified properties.</returns>
+        /// 
+        private static ImageReference CreateImageReference()
+        {
+            return new ImageReference(
+                publisher: "MicrosoftWindowsServer",
+                offer: "WindowsServer",
+                sku: "2016-datacenter-smalldisk",
+                version: "latest");
+        }
+
+
+
+        private static VirtualMachineConfiguration CreateVirtualMachineConfiguration(ImageReference imageReference)
+        {
+            return new VirtualMachineConfiguration(
+                imageReference: imageReference,
+                nodeAgentSkuId: "batch.node.windows amd64");
+        }
+
         public async static Task<CloudPool> CreatePoolIfNotExistAsync(BatchClient batchClient, string poolId, string nodeSize, int nodeCount, int taskSlotsPerNode)
         {
             // Create and configure an unbound pool with the specified ID
+
+            var vmConfiguration = CreateVirtualMachineConfiguration(CreateImageReference());
             CloudPool pool = batchClient.PoolOperations.CreatePool(poolId: poolId,
                 virtualMachineSize: nodeSize,
                 targetDedicatedComputeNodes: nodeCount,
-                cloudServiceConfiguration: new CloudServiceConfiguration("5"));
+               virtualMachineConfiguration: vmConfiguration);
 
-            pool.TaskSlotsPerNode = taskSlotsPerNode;
 
+
+            pool.TaskSlotsPerNode = 1;
+            pool.NetworkConfiguration = new NetworkConfiguration()
+            {
+            
+                SubnetId = "/subscriptions/a362b710-5701-4fbc-8d74-c2d4e344427f/resourceGroups/rg-jeastusbatchetest/providers/Microsoft.Network/virtualNetworks/jrp-vnet-test/subnets/default"
+            };
+
+
+            pool.Commit();
             // We want each node to be completely filled with tasks (i.e. up to taskSlotsPerNode) before
             // tasks are assigned to the next node in the pool
-            pool.TaskSchedulingPolicy = new TaskSchedulingPolicy(ComputeNodeFillType.Pack);
+          //  pool.TaskSchedulingPolicy = new TaskSchedulingPolicy(ComputeNodeFillType.Pack);
 
-            await GettingStartedCommon.CreatePoolIfNotExistAsync(batchClient, pool).ConfigureAwait(continueOnCapturedContext: false);
-
-            return await batchClient.PoolOperations.GetPoolAsync(poolId).ConfigureAwait(continueOnCapturedContext: false);
+         await GettingStartedCommon.CreatePoolIfNotExistAsync(batchClient, pool).ConfigureAwait(continueOnCapturedContext: false);
+                 return await batchClient.PoolOperations.GetPoolAsync(poolId).ConfigureAwait(continueOnCapturedContext: false);
         }
 
         /// <summary>

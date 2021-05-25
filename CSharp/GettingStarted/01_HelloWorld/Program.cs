@@ -7,9 +7,10 @@ namespace Microsoft.Azure.Batch.Samples.HelloWorld
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Auth;
-    using Batch.Common;
+    using Microsoft.Azure.Batch.Common;
     using Common;
     using Microsoft.Extensions.Configuration;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
     /// The main program of the HelloWorld sample
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.Batch.Samples.HelloWorld
                     Console.WriteLine(exception.ToString());
                     Console.WriteLine();
                 }
-
+                Console.ReadLine();
                 throw;
             }
 
@@ -56,27 +57,57 @@ namespace Microsoft.Azure.Batch.Samples.HelloWorld
             Console.WriteLine(helloWorldConfigurationSettings.ToString());
             Console.WriteLine(accountSettings.ToString());
 
+            /*
             // Set up the Batch Service credentials used to authenticate with the Batch Service.
-            BatchSharedKeyCredentials credentials = new BatchSharedKeyCredentials(
-                accountSettings.BatchServiceUrl,
-                accountSettings.BatchAccountName,
-                accountSettings.BatchAccountKey);
+            string AuthorityUri = "https://login.microsoftonline.com/e2f9c1cc-4ae4-484c-a7fc-5731b73e8c46";
+            string BatchResourceUri = "https://batch.core.windows.net/";
+            string BatchAccountUrl = "https://jerevenuebatchdev.eastus.batch.azure.com";
 
-            // Get an instance of the BatchClient for a given Azure Batch account.
+            string ClientId = "86fffbbd-d840-4319-88bd-22bfb8fce883";
+            string ClientKey = "fT.akf2.-rUwR_Hl23Fu5.81N-BJ7PQH_V";
+            */
+
+
+            string AuthorityUri = "https://login.microsoftonline.com/f5f38075-2a8d-4f98-9a80-f086a61c78a4";
+            string BatchResourceUri = "https://batch.core.windows.net/";
+            string BatchAccountUrl = "https://batchtestjrp.eastus2.batch.azure.com";
+
+            string ClientId = "9f179100-46f4-41b7-92ec-d94ba40e535f";
+            string ClientKey = "Cvu3D.EN010.k.1B9waF5A7.eP.i21DI.g";
+
+
+            //TO-DO: refactor
+            AuthenticationContext authContext = new AuthenticationContext(AuthorityUri);
+            AuthenticationResult authResult = authContext.AcquireTokenAsync(BatchResourceUri, new ClientCredential(ClientId, ClientKey)).GetAwaiter().GetResult();
+
+
+
+            Console.WriteLine(authResult.AccessToken);
+
+
+            var credentials =  new BatchTokenCredentials(BatchAccountUrl, authResult.AccessToken);
+            //var credentials =
+            //          new Microsoft.Azure.Batch.Auth.BatchSharedKeyCredentials(
+            //              accountName: "batchtestjrp",
+            //              keyValue: "CUSMLo7EhYv+JiZ8kLNWSpfCQN/brlyPKbARuyTf2gDDDHye3pvgg/XusWCyvgxyC8WPi+PRSaJjpJ8vCKjLdg==",
+            //              baseUrl: "https://batchtestjrp.eastus2.batch.azure.com"
+            //          );
+
             using (BatchClient batchClient = BatchClient.Open(credentials))
             {
                 // add a retry policy. The built-in policies are No Retry (default), Linear Retry, and Exponential Retry
-                batchClient.CustomBehaviors.Add(RetryPolicyProvider.ExponentialRetryProvider(TimeSpan.FromSeconds(5), 3));
+            //    batchClient.CustomBehaviors.Add(RetryPolicyProvider.ExponentialRetryProvider(TimeSpan.FromSeconds(5), 3));
+              await ArticleHelpers.CreatePoolIfNotExistAsync(batchClient, helloWorldConfigurationSettings.PoolId, helloWorldConfigurationSettings.PoolNodeVirtualMachineSize, 1, 1);
 
-                string jobId = GettingStartedCommon.CreateJobId("HelloWorldJob");
+                string jobId = GettingStartedCommon.CreateJobId("HelloWorl111");
 
                 try
                 {
                     // Submit the job
-                    await SubmitJobAsync(batchClient, helloWorldConfigurationSettings, jobId);
+                    //await SubmitJobAsync(batchClient, helloWorldConfigurationSettings, jobId);
 
-                    // Wait for the job to complete
-                    await WaitForJobAndPrintOutputAsync(batchClient, jobId);
+                    //// Wait for the job to complete
+                    //await WaitForJobAndPrintOutputAsync(batchClient, jobId);
                 }
                 finally
                 {
@@ -108,23 +139,33 @@ namespace Microsoft.Azure.Batch.Samples.HelloWorld
             {
                 AutoPoolSpecification = new AutoPoolSpecification()
                 {
-                    AutoPoolIdPrefix = "HelloWorld",
+                    AutoPoolIdPrefix = "JPhillips",
                     PoolSpecification = new PoolSpecification()
                     {
                         TargetDedicatedComputeNodes = configurationSettings.PoolTargetNodeCount,
                         CloudServiceConfiguration = new CloudServiceConfiguration(configurationSettings.PoolOSFamily),
-                        VirtualMachineSize = configurationSettings.PoolNodeVirtualMachineSize
-                    },
+                        VirtualMachineSize = configurationSettings.PoolNodeVirtualMachineSize,
+                        NetworkConfiguration = new NetworkConfiguration { PublicIPAddressConfiguration = new PublicIPAddressConfiguration(IPAddressProvisioningType.NoPublicIPAddresses), SubnetId = "/subscriptions/a362b710-5701-4fbc-8d74-c2d4e344427f/resourceGroups/rg-jeastusbatchetest/providers/Microsoft.Network/virtualNetworks/jrp-vnet-test/subnets/batchnetwork"}
+                        },
                     KeepAlive = false,
                     PoolLifetimeOption = PoolLifetimeOption.Job
+                  
+                    
                 }
             };
 
-            // Commit Job to create it in the service
-            await unboundJob.CommitAsync();
+           // unboundJob.PoolInformation.AutoPoolSpecification.PoolSpecification.NetworkConfiguration = new NetworkConfiguration() { SubnetId = "/subscriptions/a362b710-5701-4fbc-8d74-c2d4e344427f/resourceGroups/rg-jeastusbatchetest/providers/Microsoft.Network/virtualNetworks/jrp-vnet-test/subnets/default" };
 
-            // create a simple task. Each task within a job must have a unique ID
-            await batchClient.JobOperations.AddTaskAsync(jobId, new CloudTask("task1", "cmd /c echo Hello world from the Batch Hello world sample!"));
+
+
+            unboundJob.Commit();
+
+
+        // Commit Job to create it in the service
+
+        
+            
+           await batchClient.JobOperations.AddTaskAsync(jobId, new CloudTask("task1", "cmd /c echo Hello world from the Batch Hello world sample!"));
         }
 
         /// <summary>

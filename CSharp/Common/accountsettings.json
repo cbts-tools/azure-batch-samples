@@ -1,8 +1,8 @@
 ﻿{
   "batchAccountName": "",
-  "batchAccountKey": "",
+  "batchAccountKey": "LTzACKXZ55zE9vF28cu8PJWSPHjGJ7JQQxCX/RkdoigioIQUOMoOEHpza1IZBXDTflEKWfgQDw1xZWMfa9cj/Q==",
   "batchServiceUrl": "",
-  "storageAccountName": "",
-  "storageAccountKey": "",
+  "storageAccountName": "azqaseusrcsdiag",
+  "storageAccountKey": "ac1STOt3+cl3xPuWvoEEI+Ol0gOKIN+RfLWSVnODFU/g4rq2DjLtZD4bf87jZMoONDAKX4a1bAMCanI50ibu4g==",
   "storageServiceUrl": "core.windows.net"
 }
